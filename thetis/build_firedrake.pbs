@@ -1,0 +1,22 @@
+#!/bin/bash
+#SBATCH --job-name=firedrake-build           # Job name
+#SBATCH --mail-type=FAIL                     # Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=jon.hill@york.ac.uk      # Where to send mail
+#SBATCH --ntasks=1                           # run on 1 core
+#SBATCH --cpus-per-task=1                    # Number of CPU cores per task
+#SBATCH --time=05:00:00                      # Time limit hrs:min:sec
+#SBATCH --output=firedrake_%j.log            # Standard output and error log
+#SBATCH --account=ENV-TSUNAMI-2019           # Project account
+
+# load in the necessary module
+module load firedrake
+# remove any python stuff
+unset PYTHONPATH
+
+# uncomment this line to turn on petsc debugging
+#export PETSC_CONFIGURE_OPTIONS="--with-debugging=1"
+
+# remember to edit the firedrake-install script as per the instructions online
+
+# the actual install. Takes ~2-3 hours and installs thetis, pyadjoint using the local MPICH mpi. Alter the --venv-name to suit
+python3 firedrake-install --install thetis --install pyadjoint --mpicc mpicc --mpicxx mpicxx --mpif90 mpif90 --mpiexec mpiexec --no-package-manager --with-blas=download --disable-ssh --venv-name firedrake
