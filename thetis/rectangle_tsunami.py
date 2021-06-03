@@ -16,8 +16,9 @@ def set_tsunami_field(elev, t):
 
 # the mesh. 
 
-# 100 x 50 km mesh with 750, 500 triangles
-mesh2d = RectangleMesh(750,500,100000.,50000.)
+# 100 x 50 km mesh with 500, 250 triangles
+mesh2d = RectangleMesh(500,250,100000.,50000.)
+# this gives approx 3 million DoFs (500*2*250*2*6) so can run on upto ~120 cores
 
 # we set the lefthand x edge as the incoming wave
 physID = 1
@@ -55,9 +56,12 @@ L = Constant(1e3)
 V = FunctionSpace(mesh2d, 'CG', 1)
 # Calculate distance to open boundary
 print('Calculating distance for viscosity',flush=True)
-bcs = [DirichletBC(V, 0.0, physID)] #make sure this matches physicalID of open boundaries
+bcs = DirichletBC(V, 0.0, physID) #make sure this matches physicalID of open boundaries
 v = TestFunction(V)
 u = Function(V)
+# Getting random numbers on a core. This may have been the fix (though probably not)
+u.interpolate(Constant(0.0))
+
 solver_parameters={'snes_monitor': None,
                    'snes_view': None,
                    'ksp_monitor_true_residual': None,
