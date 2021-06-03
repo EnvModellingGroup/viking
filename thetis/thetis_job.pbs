@@ -12,8 +12,9 @@ module load firedrake
 
 unset PYTHONPATH
 
-. /mnt/lustre/users/jh1889/firedrake/bin/activate
+. /mnt/lustre/groups/env-tsunami-2019/firedrake/bin/activate
 
 export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
 
 mpiexec -n 30 python rectangle_tsunami.py
