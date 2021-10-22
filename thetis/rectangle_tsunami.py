@@ -103,9 +103,7 @@ options.output_directory = output_dir
 options.fields_to_export = ['uv_2d','elev_2d']
 # spatial discretisation
 options.element_family = "dg-dg"
-options.timestepper_type = 'CrankNicolson'
-options.timestepper_options.implicitness_theta = 1.0
-options.timestepper_options.use_semi_implicit_linearization = True
+options.swe_timestepper_type = 'CrankNicolson'
 options.manning_drag_coefficient = Constant(manning_drag_coefficient)
 options.horizontal_viscosity = viscosity_2d
 options.timestep = dt
