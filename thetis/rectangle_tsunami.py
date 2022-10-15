@@ -1,7 +1,9 @@
 # Simple rectangle with sigmoidal slope tsunami simulation
 # ================================================================================
 from thetis import *
+from firedrake.petsc import PETSc
 from math import sin,radians
+import sys
 
 def set_tsunami_field(elev, t):
 
@@ -16,9 +18,8 @@ def set_tsunami_field(elev, t):
 
 # the mesh. 
 
-# 100 x 50 km mesh with 500, 250 triangles
-mesh2d = RectangleMesh(500,250,100000.,50000.)
-# this gives approx 3 million DoFs (500*2*250*2*6) so can run on upto ~120 cores
+# 100 x 50 km mesh with 750, 500 triangles
+mesh2d = RectangleMesh(500, 250, 100000., 50000.)
 
 # we set the lefthand x edge as the incoming wave
 physID = 1
@@ -50,41 +51,36 @@ with timed_stage('initialising bathymetry'):
     File('bathy.pvd').write(bathymetry_2d)
 
 use_wetting_and_drying = True
+PETSc.Sys.Print('  rank %d owns %d elements and can access %d vertices' \
+                % (mesh2d.comm.rank, mesh2d.num_cells(), mesh2d.num_vertices()),
+                comm=COMM_SELF)
 
 # viscosity, create a distance function
-L = Constant(1e3)
+L = Constant(1e2)
 V = FunctionSpace(mesh2d, 'CG', 1)
 # Calculate distance to open boundary
-print('Calculating distance for viscosity',flush=True)
-bcs = DirichletBC(V, 0.0, physID) #make sure this matches physicalID of open boundaries
+bcs = DirichletBC(V, 0.0, physID)
 v = TestFunction(V)
-u = Function(V)
-# Getting random numbers on a core. This may have been the fix (though probably not)
+u = Function(V)#.interpolate(0.0)
 u.interpolate(Constant(0.0))
-
-solver_parameters={'snes_monitor': None,
-                   'snes_view': None,
-                   'ksp_monitor_true_residual': None,
-                   'snes_converged_reason': None,
-                   'ksp_converged_reason': None,
-                   'ksp_rtol': 1e-4,
-                   'snes_type': 'ksponly'} 
+solver_parameters={'snes_rtol': 1e-3,
+         'ksp_type': 'preonly',
+                   } 
 # Before we solve the Eikonal equation, let's solve a Laplace equation to
 # generate an initial guess
 F = L**2*(inner(grad(u), grad(v))) * dx - v * dx
+
 solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 chk = DumbCheckpoint('dist', mode=FILE_CREATE)
 with timed_stage('initialising dist'):
     File('dist.pvd').write(u)
-
-
 # epss values set the accuracy (in meters) of the final "distance to boundary" function. To make
 # more accurate add in extra iterations, eg, 500., 250., etc. This may result in the solver not
 # converging.
 epss = [10000., 1000., 500., 250.]
 # solve Eikonal equations
 for i, eps in enumerate(epss):
-    print('Solving Eikonal with eps == ' + str(float(eps)))
+    PETSc.Sys.Print('Solving Eikonal with eps == ' + str(float(eps)))
     F = inner(sqrt(inner(grad(u), grad(u))), v) * dx - v * dx + Constant(eps)*inner(grad(u), grad(v)) * dx
     solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 
@@ -103,7 +99,9 @@ options.output_directory = output_dir
 options.fields_to_export = ['uv_2d','elev_2d']
 # spatial discretisation
 options.element_family = "dg-dg"
-options.swe_timestepper_type = 'CrankNicolson'
+options.swe_timestepper_type='CrankNicolson'
+#options.timestepper_options.implicitness_theta = 1.0
+#options.timestepper_options.use_semi_implicit_linearization = True
 options.manning_drag_coefficient = Constant(manning_drag_coefficient)
 options.horizontal_viscosity = viscosity_2d
 options.timestep = dt
