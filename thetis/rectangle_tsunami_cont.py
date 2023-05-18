@@ -52,8 +52,7 @@ const = -510.
 shift2 = 500.
 # sigmoidal bathy function
 bathymetry_2d.interpolate(const * (exp((x-shift)/scale) / (exp((x-shift)/scale) + 1. )) + shift2)
-with timed_stage('initialising bathymetry'):
-    File('bathy.pvd').write(bathymetry_2d)
+
 
 use_wetting_and_drying = True
 PETSc.Sys.Print('  rank %d owns %d elements and can access %d vertices' \
@@ -90,9 +89,8 @@ for i, eps in enumerate(epss):
     solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 
 
-with timed_stage('initialising viscosity'):
-    viscosity_2d.interpolate(Max(h_viscosity, 1000 * (1. - u / 10e3)))
-    File('viscosity.pvd').write(viscosity_2d)
+viscosity_2d.interpolate(max_value(h_viscosity, 1000 * (1. - u / 10e3)))
+
 
 # --- create solver ---
 solverObj = solver2d.FlowSolver2d(mesh2d, bathymetry_2d)

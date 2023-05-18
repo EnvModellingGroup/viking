@@ -34,6 +34,7 @@ output_directory = "output"
 wd_alpha = 1.0
 h_viscosity = 10.
 manning_drag_coefficient = 0.025
+use_wetting_and_drying = True
 
 output_dir = create_directory(output_directory)
 
@@ -49,7 +50,6 @@ const = -510.
 shift2 = 500.
 # sigmoidal bathy function
 bathymetry_2d.interpolate(const * (exp((x-shift)/scale) / (exp((x-shift)/scale) + 1. )) + shift2)
-use_wetting_and_drying = True
 
 # viscosity, create a distance function
 L = Constant(1e2)
@@ -80,7 +80,7 @@ for i, eps in enumerate(epss):
     F = inner(sqrt(inner(grad(u), grad(u))), v) * dx - v * dx + Constant(eps)*inner(grad(u), grad(v)) * dx
     solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 
-viscosity_2d.interpolate(Max(h_viscosity, 1000 * (1. - u / 10e3)))
+viscosity_2d.interpolate(max_value(h_viscosity, 1000 * (1. - u / 10e3)))
 
 # --- create solver ---
 solverObj = solver2d.FlowSolver2d(mesh2d, bathymetry_2d)
