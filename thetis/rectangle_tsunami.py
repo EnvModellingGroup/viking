@@ -114,7 +114,7 @@ def update_forcings(t):
     set_tsunami_field(tsunami_elev, t)        
 
 update_forcings(0.0)
-solverObj.load_state(checkpoint, outputdir=output_directory)
+solverObj.assign_initial_conditions(uv=Constant((1e-9,0.0)), elev=Constant(1e-9))
 # Run model
 solverObj.iterate(update_forcings=update_forcings)
 

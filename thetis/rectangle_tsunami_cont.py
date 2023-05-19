@@ -36,7 +36,7 @@ manning_drag_coefficient = 0.025
 output_dir = create_directory(output_directory)
 
 
-chk = CheckpointFile(os.path.join(output_directory,"hdf5","Elevation2d_0002.h5", 'r')
+chk = CheckpointFile(os.path.join(output_directory,"hdf5","Elevation2d_00002.h5"), 'r')
 mesh2d = chk.load_mesh()
 
 
@@ -124,9 +124,7 @@ def update_forcings(t):
     set_tsunami_field(tsunami_elev, t)        
 
 update_forcings(0.0)
-# note. A bug in thetis means if the initial condition is 0 for vel and elev, it fails. 
-# Set it to a very small number instead...
-solverObj.assign_initial_conditions(uv=Constant((1e-7,0.0)), elev=Constant(1e-6))
+solverObj.load_state(checkpoint, outputdir=output_directory)
 
 # Run model
 solverObj.iterate(update_forcings=update_forcings)
