@@ -4,6 +4,7 @@ from thetis import *
 from firedrake.petsc import PETSc
 from math import sin,radians
 import sys
+import os.path
 
 def set_tsunami_field(elev, t):
 
@@ -16,12 +17,9 @@ def set_tsunami_field(elev, t):
 
     return evector
 
-# the mesh. 
-
-# 100 x 50 km mesh with 250x125 triangles
-# scale this appropriately for the number of cores you want to use
-# 250x125 is ~4-8 cores
-mesh2d = RectangleMesh(250, 125, 100000., 50000.)
+# this tests the continuation of a model
+# assumes you've run the main model for at least 2 outputs!
+checkpoint = 2
 
 # we set the lefthand x edge as the incoming wave
 physID = 1
@@ -34,9 +32,13 @@ output_directory = "output"
 wd_alpha = 1.0
 h_viscosity = 10.
 manning_drag_coefficient = 0.025
-use_wetting_and_drying = True
 
 output_dir = create_directory(output_directory)
+
+
+chk = CheckpointFile(os.path.join(output_directory,"hdf5","Elevation2d_00002.h5"), 'r')
+mesh2d = chk.load_mesh()
+
 
 # Bathymetry and viscosity field
 P1_2d = get_functionspace(mesh2d, 'DG', 1)
@@ -50,6 +52,12 @@ const = -510.
 shift2 = 500.
 # sigmoidal bathy function
 bathymetry_2d.interpolate(const * (exp((x-shift)/scale) / (exp((x-shift)/scale) + 1. )) + shift2)
+
+
+use_wetting_and_drying = True
+PETSc.Sys.Print('  rank %d owns %d elements and can access %d vertices' \
+                % (mesh2d.comm.rank, mesh2d.num_cells(), mesh2d.num_vertices()),
+                comm=COMM_SELF)
 
 # viscosity, create a distance function
 L = Constant(1e2)
@@ -80,7 +88,9 @@ for i, eps in enumerate(epss):
     F = inner(sqrt(inner(grad(u), grad(u))), v) * dx - v * dx + Constant(eps)*inner(grad(u), grad(v)) * dx
     solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 
+
 viscosity_2d.interpolate(max_value(h_viscosity, 1000 * (1. - u / 10e3)))
+
 
 # --- create solver ---
 solverObj = solver2d.FlowSolver2d(mesh2d, bathymetry_2d)
@@ -114,7 +124,8 @@ def update_forcings(t):
     set_tsunami_field(tsunami_elev, t)        
 
 update_forcings(0.0)
-solverObj.assign_initial_conditions(uv=Constant((1e-9,0.0)), elev=Constant(1e-9))
+solverObj.load_state(checkpoint, outputdir=output_directory)
+
 # Run model
 solverObj.iterate(update_forcings=update_forcings)
 
