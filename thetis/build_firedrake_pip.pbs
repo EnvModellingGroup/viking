@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH --job-name=firedrake-build           # Job name
+#SBATCH --mail-type=FAIL                     # Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=jon.hill@york.ac.uk      # Where to send mail
+#SBATCH --ntasks=3                           # run on 1 core
+#SBATCH --cpus-per-task=1                    # Number of CPU cores per task
+#SBATCH --time=03:00:00                      # Time limit hrs:min:sec
+#SBATCH --output=firedrake_%j.log            # Standard output and error log
+#SBATCH --account=ENV-TSUNAMI-2019           # Project account
+#SBATCH --mem=16G
+
+VENV_NAME="venv-firedrake-apr25"
+
+# load in the necessary module
+module load firedrake-pip
+
+# PETSc
+git clone --depth 1 --branch $(python3 firedrake-configure --show-petsc-version) https://gitlab.com/petsc/petsc.git
+cd petsc
+cat petsc_config.txt | xargs -L1 ./configure
+make PETSC_DIR=/mnt/scratch/projects/env-tsunami-2019/petsc PETSC_ARCH=arch-firedrake-default all
+make check
+cd ..
+
+# firedrake
+python3 -m venv ${VENV_NAME}
+. ${VENV_NAME}/bin/activate
+export $(python3 firedrake-configure --show-env --no-package-manager)
+pip install --no-binary h5py "firedrake @ git+https://github.com/firedrakeproject/firedrake.git#[test]"
+firedrake-check
