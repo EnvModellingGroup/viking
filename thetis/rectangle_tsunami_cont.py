@@ -19,7 +19,7 @@ def set_tsunami_field(elev, t):
 
 # this tests the continuation of a model
 # assumes you've run the main model for at least 2 outputs!
-checkpoint = 2
+checkpoint = 24
 
 # we set the lefthand x edge as the incoming wave
 physID = 1
@@ -36,7 +36,7 @@ manning_drag_coefficient = 0.025
 output_dir = create_directory(output_directory)
 
 
-chk = CheckpointFile(os.path.join(output_directory,"hdf5","Elevation2d_00002.h5"), 'r')
+chk = CheckpointFile(os.path.join(output_directory,"hdf5","Elevation2d_00000.h5"), 'r')
 mesh2d = chk.load_mesh()
 
 
@@ -75,7 +75,6 @@ solver_parameters={'snes_rtol': 1e-3,
 F = L**2*(inner(grad(u), grad(v))) * dx - v * dx
 
 solve(F == 0, u, bcs, solver_parameters=solver_parameters)
-chk = DumbCheckpoint('dist', mode=FILE_CREATE)
 with timed_stage('initialising dist'):
     File('dist.pvd').write(u)
 # epss values set the accuracy (in meters) of the final "distance to boundary" function. To make

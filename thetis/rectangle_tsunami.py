@@ -4,6 +4,7 @@ from thetis import *
 from firedrake.petsc import PETSc
 from math import sin,radians
 import sys
+from time import perf_counter
 
 def set_tsunami_field(elev, t):
 
@@ -21,14 +22,14 @@ def set_tsunami_field(elev, t):
 # 100 x 50 km mesh with 250x125 triangles
 # scale this appropriately for the number of cores you want to use
 # 250x125 is ~4-8 cores
-mesh2d = RectangleMesh(250, 125, 100000., 50000.)
+mesh2d = RectangleMesh(500, 250, 1000000., 500000.)
 
 # we set the lefthand x edge as the incoming wave
 physID = 1
 #timestepping options
 dt = 10 # reduce this if solver does not converge
 t_export = 60.0
-t_end = 7200. # 2 hours
+t_end = 180. # 2 hours
 output_directory = "output"
 # model options
 wd_alpha = 1.0
@@ -40,8 +41,8 @@ output_dir = create_directory(output_directory)
 
 # Bathymetry and viscosity field
 P1_2d = get_functionspace(mesh2d, 'DG', 1)
-bathymetry_2d = Function(P1_2d, name='Bathymetry')
-viscosity_2d = Function(P1_2d, name='viscosity')
+#bathymetry_2d = Function(P1_2d, name='Bathymetry')
+#viscosity_2d = Function(P1_2d, name='viscosity')
 # Bathymetry combination of bell curve and sloping bathymetry
 x, y = SpatialCoordinate(mesh2d)
 shift = 50000.
@@ -49,7 +50,7 @@ scale = 10000.
 const = -510.
 shift2 = 500.
 # sigmoidal bathy function
-bathymetry_2d.interpolate(const * (exp((x-shift)/scale) / (exp((x-shift)/scale) + 1. )) + shift2)
+bathymetry_2d = assemble(interpolate(const * (exp((x-shift)/scale) / (exp((x-shift)/scale) + 1. )) + shift2,P1_2d))
 
 # viscosity, create a distance function
 L = Constant(1e2)
@@ -57,8 +58,8 @@ V = FunctionSpace(mesh2d, 'CG', 1)
 # Calculate distance to open boundary
 bcs = DirichletBC(V, 0.0, physID)
 v = TestFunction(V)
-u = Function(V)#.interpolate(0.0)
-u.interpolate(Constant(0.0))
+#u = Function(V)#.interpolate(0.0)
+u = assemble(interpolate(Constant(0.0),V))
 solver_parameters={'snes_rtol': 1e-3,
          'ksp_type': 'preonly',
                    } 
@@ -67,9 +68,8 @@ solver_parameters={'snes_rtol': 1e-3,
 F = L**2*(inner(grad(u), grad(v))) * dx - v * dx
 
 solve(F == 0, u, bcs, solver_parameters=solver_parameters)
-chk = DumbCheckpoint('dist', mode=FILE_CREATE)
 with timed_stage('initialising dist'):
-    File('dist.pvd').write(u)
+    VTKFile('dist.pvd').write(u)
 # epss values set the accuracy (in meters) of the final "distance to boundary" function. To make
 # more accurate add in extra iterations, eg, 500., 250., etc. This may result in the solver not
 # converging.
@@ -80,7 +80,8 @@ for i, eps in enumerate(epss):
     F = inner(sqrt(inner(grad(u), grad(u))), v) * dx - v * dx + Constant(eps)*inner(grad(u), grad(v)) * dx
     solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 
-viscosity_2d.interpolate(max_value(h_viscosity, 1000 * (1. - u / 10e3)))
+viscosity_2d = assemble(interpolate(max_value(h_viscosity, 1000 * (1. - u / 10e3)), P1_2d))
+
 
 # --- create solver ---
 solverObj = solver2d.FlowSolver2d(mesh2d, bathymetry_2d)
@@ -116,6 +117,11 @@ def update_forcings(t):
 update_forcings(0.0)
 solverObj.assign_initial_conditions(uv=Constant((1e-9,0.0)), elev=Constant(1e-9))
 # Run model
+from time import perf_counter
+t1_start = perf_counter() 
+
 solverObj.iterate(update_forcings=update_forcings)
 
+t1_stop = perf_counter()
+print("Elapsed time:",t1_stop-t1_start)
 
