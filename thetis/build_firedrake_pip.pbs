@@ -9,7 +9,8 @@
 #SBATCH --account=ENV-TSUNAMI-2019           # Project account
 #SBATCH --mem=16G
 
-VENV_NAME="venv-firedrake-2026.4.1"
+TAG="2026.4.1"
+VENV_NAME="venv-firedrake-${TAG}"
 
 # load in the necessary module
 module load firedrake-pip
@@ -18,18 +19,19 @@ module load firedrake-pip
 unset PYTHONPATH
 
 # PETSc
-git clone --depth 1 --branch $(python3 firedrake-configure --show-petsc-version --os unknown) https://gitlab.com/petsc/petsc.git
-cd petsc
+#git clone --depth 1 --branch $(python3 firedrake-configure --show-petsc-version --os unknown) https://gitlab.com/petsc/petsc.git petsc-${TAG}
+#cd petsc-${TAG}
 # based on what firedrake-config gives us minus somethings which are in the module environment, e.g. Bison, hwloc, etc
-./configure PETSC_ARCH=arch-firedrake-default --COPTFLAGS='-O3 -march=native -mtune=native' --CXXOPTFLAGS='-O3 -march=native -mtune=native' --FOPTFLAGS='-O3 -march=native -mtune=native' --with-c2html=0 --with-debugging=0 --with-fortran-bindings=0 --with-shared-libraries=1 --with-strict-petscerrorcode --download-hypre --download-metis --download-mumps --download-ptscotch --download-suitesparse --download-superlu_dist --with-scalapack-dir=/opt/apps/eb/software/ScaLAPACK/2.2.2-gompi-2025b-fb --with-hdf5=1
-make PETSC_DIR=/mnt/scratch/projects/env-tsunami-2019/petsc PETSC_ARCH=arch-firedrake-default all
-make check
-cd ..
+#./configure PETSC_ARCH=arch-firedrake-default --COPTFLAGS='-O3 -march=native -mtune=native' --CXXOPTFLAGS='-O3 -march=native -mtune=native' --FOPTFLAGS='-O3 -march=native -mtune=native' --with-c2html=0 --with-debugging=0 --with-fortran-bindings=0 --with-shared-libraries=1 --with-strict-petscerrorcode --download-hypre --download-metis --download-mumps --download-ptscotch --download-suitesparse --download-superlu_dist --with-scalapack-dir=/opt/apps/eb/software/ScaLAPACK/2.2.2-gompi-2025b-fb --with-hdf5=1
+#make PETSC_DIR=/mnt/scratch/projects/env-tsunami-2019/petsc-${TAG} PETSC_ARCH=arch-firedrake-default all
+#make check
+#cd ..
 
 # firedrake
 python3 -m venv ${VENV_NAME}
 . ${VENV_NAME}/bin/activate
 export $(python3 firedrake-configure --show-env --os unknown)
+export PETSC_DIR=/mnt/scratch/projects/env-tsunami-2019/petsc-${TAG}
 pip cache purge
 pip cache remove mpi4py
 pip cache remove petsc4py
@@ -39,7 +41,7 @@ pip cache remove libsupermesh
 pip cache remove firedrake
 pip install --no-binary h5py 'firedrake[check]'
 firedrake-check
-pip install pip install git+https://github.com/thetisproject/thetis.git@release
+pip install git+https://github.com/thetisproject/thetis.git@release
 pip install setuptools
 pip install gdal==$(gdal-config --version).* --no-cache-dir --force-reinstall
 pip install hrds

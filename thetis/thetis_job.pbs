@@ -11,7 +11,7 @@
 
 module load firedrake-pip
 
-. /mnt/scratch/projects/env-tsunami-2019/venv-firedrake-june26/bin/activate
+. /mnt/scratch/projects/env-tsunami-2019/venv-firedrake-2026.4.1/bin/activate
 
 time mpiexec -n 2 python rectangle_tsunami.py
 time mpiexec -n 4 python rectangle_tsunami.py
