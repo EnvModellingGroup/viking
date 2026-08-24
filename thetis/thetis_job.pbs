@@ -13,6 +13,11 @@ module load firedrake-pip
 
 . /mnt/scratch/projects/env-tsunami-2019/venv-firedrake-2026.4.1/bin/activate
 
+mkdir -p /users/$USER/scratch/.cache
+export PYOP2_CACHE_DIR=/users/$USER/scratch/.cache
+export XDG_CACHE_HOME=/users/$USER/scratch/.cache
+export FIREDRAKE_TSFC_KERNEL_CACHE_DIR=/users/$USER/scratch/.cache
+
 time mpiexec -n 2 python rectangle_tsunami.py
 time mpiexec -n 4 python rectangle_tsunami.py
 time mpiexec -n 8 python rectangle_tsunami.py
